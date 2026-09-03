@@ -1,304 +1,161 @@
-import Link from "next/link";
-
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      {/* ================= NAVBAR ================= */}
+    <main className="min-h-screen bg-black text-white">
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold">
+          Revise<span className="text-blue-500">AI</span>
+        </h1>
 
-      <nav className="border-b border-slate-800">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          {/* LOGO */}
+        <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
+          <a href="#features" className="hover:text-white transition">
+            Features
+          </a>
 
-          <Link href="/" className="text-2xl font-bold tracking-tight">
-            Revise<span className="text-cyan-400">AI</span>
-          </Link>
+          <a href="#how-it-works" className="hover:text-white transition">
+            How It Works
+          </a>
 
-          {/* NAV LINKS */}
-
-          <div className="hidden items-center gap-8 md:flex">
-            <Link
-              href="#features"
-              className="text-sm text-slate-300 transition hover:text-white"
-            >
-              Features
-            </Link>
-
-            <Link
-              href="#how-it-works"
-              className="text-sm text-slate-300 transition hover:text-white"
-            >
-              How it works
-            </Link>
-
-            <Link
-              href="/login"
-              className="text-sm text-slate-300 transition hover:text-white"
-            >
-              Login
-            </Link>
-
-            <Link
-              href="/signup"
-              className="rounded-lg bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-            >
-              Get Started
-            </Link>
-          </div>
+          <a
+            href="/login"
+            className="px-5 py-2 rounded-lg border border-gray-700 hover:bg-gray-900 transition"
+          >
+            Login
+          </a>
         </div>
       </nav>
 
-      {/* ================= HERO ================= */}
+      {/* Hero */}
+      <section className="max-w-5xl mx-auto text-center px-6 pt-24 pb-32">
+        <p className="text-blue-400 font-medium tracking-widest text-sm mb-6">
+          AI-POWERED LEARNING
+        </p>
 
-      <section className="relative overflow-hidden">
-        {/* Background Glow */}
+        <h2 className="text-5xl md:text-7xl font-bold leading-tight">
+          Study Smarter.
+          <br />
+          <span className="text-blue-500">Revise Better.</span>
+          <br />
+          Perform Better.
+        </h2>
 
-        <div className="absolute left-1/2 top-20 -z-0 h-96 w-96 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+        <p className="max-w-2xl mx-auto mt-8 text-gray-400 text-lg leading-relaxed">
+          Turn your notes and study material into personalized revision content,
+          quizzes, and interview questions using AI.
+        </p>
 
-        <div className="relative mx-auto max-w-7xl px-6 py-28 text-center">
-          {/* Badge */}
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
+          <button className="px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-medium">
+            Get Started
+          </button>
 
-          <div className="mx-auto mb-7 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-300">
-            AI-powered learning platform
-          </div>
-
-          {/* Heading */}
-
-          <h1 className="mx-auto max-w-4xl text-5xl font-bold leading-tight tracking-tight md:text-7xl">
-            Study smarter.
-            <br />
-            <span className="text-cyan-400">Revise better.</span>
-          </h1>
-
-          {/* Description */}
-
-          <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-400">
-            Upload your notes, PDFs or images and let Revise AI transform them
-            into personalized revision material, quizzes and interview
-            questions.
-          </p>
-
-          {/* Buttons */}
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/signup"
-              className="rounded-xl bg-cyan-400 px-7 py-3.5 font-semibold text-slate-950 transition hover:bg-cyan-300"
-            >
-              Start Learning Free →
-            </Link>
-
-            <Link
-              href="#features"
-              className="rounded-xl border border-slate-700 px-7 py-3.5 font-semibold text-slate-200 transition hover:border-slate-500"
-            >
-              Explore Features
-            </Link>
-          </div>
+          <button className="px-7 py-3 rounded-xl border border-gray-700 hover:bg-gray-900 transition font-medium">
+            See How It Works
+          </button>
         </div>
       </section>
 
-      {/* ================= FEATURES ================= */}
+      {/* Features */}
+      <section id="features" className="max-w-6xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <p className="text-blue-400 text-sm font-medium">FEATURES</p>
 
-      <section
-        id="features"
-        className="border-t border-slate-800 bg-slate-900/40"
-      >
-        <div className="mx-auto max-w-7xl px-6 py-24">
-          {/* Heading */}
-
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
-              Everything you need
-            </p>
-
-            <h2 className="mt-3 text-3xl font-bold md:text-4xl">
-              Your AI study companion
-            </h2>
-
-            <p className="mx-auto mt-4 max-w-2xl text-slate-400">
-              Revise AI helps you understand, practice and prepare using your
-              own study material.
-            </p>
-          </div>
-
-          {/* Feature Cards */}
-
-          <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {/* CARD 1 */}
-
-            <FeatureCard
-              icon="📚"
-              title="AI Revision"
-              description="Upload your notes and let AI create concise, exam-focused revision material."
-            />
-
-            {/* CARD 2 */}
-
-            <FeatureCard
-              icon="🧠"
-              title="Smart Quizzes"
-              description="Generate personalized quizzes from your PDFs, notes and study material."
-            />
-
-            {/* CARD 3 */}
-
-            <FeatureCard
-              icon="🎯"
-              title="Interview Prep"
-              description="Practice technical and HR questions and get AI-powered feedback."
-            />
-
-            {/* CARD 4 */}
-
-            <FeatureCard
-              icon="📊"
-              title="Performance Analysis"
-              description="Track your scores and discover your strongest and weakest topics."
-            />
-
-            {/* CARD 5 */}
-
-            <FeatureCard
-              icon="📄"
-              title="PDF & Image Support"
-              description="Upload study material and let Revise AI understand it for you."
-            />
-
-            {/* CARD 6 */}
-
-            <FeatureCard
-              icon="⚡"
-              title="Personalized Learning"
-              description="Your progress helps Revise AI understand what you need to practice next."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ================= HOW IT WORKS ================= */}
-
-      <section id="how-it-works">
-        <div className="mx-auto max-w-7xl px-6 py-24">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
-              Simple process
-            </p>
-
-            <h2 className="mt-3 text-3xl font-bold md:text-4xl">
-              How Revise AI works
-            </h2>
-          </div>
-
-          <div className="mt-14 grid gap-10 md:grid-cols-3">
-            {/* STEP 1 */}
-
-            <Step
-              number="01"
-              title="Upload"
-              description="Upload your PDF, notes or study images."
-            />
-
-            {/* STEP 2 */}
-
-            <Step
-              number="02"
-              title="Let AI Understand"
-              description="Revise AI analyzes your material and creates useful learning content."
-            />
-
-            {/* STEP 3 */}
-
-            <Step
-              number="03"
-              title="Learn & Improve"
-              description="Revise, take quizzes and improve your weak areas."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ================= CTA ================= */}
-
-      <section className="border-t border-slate-800">
-        <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          <h2 className="text-4xl font-bold md:text-5xl">
-            Ready to study smarter?
+          <h2 className="text-4xl font-bold mt-3">
+            Everything You Need to Prepare
           </h2>
 
-          <p className="mx-auto mt-5 max-w-xl text-slate-400">
-            Turn your study material into an intelligent learning experience.
+          <p className="text-gray-400 mt-5">
+            One platform for revision, quizzes and interviews.
           </p>
+        </div>
 
-          <Link
-            href="/signup"
-            className="mt-8 inline-block rounded-xl bg-cyan-400 px-8 py-4 font-semibold text-slate-950 transition hover:bg-cyan-300"
-          >
-            Create Your Account →
-          </Link>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="p-8 rounded-2xl border border-gray-800 bg-gray-950 hover:border-gray-600 transition">
+            <div className="text-3xl mb-5">📚</div>
+
+            <h3 className="text-xl font-semibold mb-3">Smart Revision</h3>
+
+            <p className="text-gray-400 leading-relaxed">
+              Upload your study material and let AI create personalized revision
+              content.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-2xl border border-gray-800 bg-gray-950 hover:border-gray-600 transition">
+            <div className="text-3xl mb-5">🧠</div>
+
+            <h3 className="text-xl font-semibold mb-3">AI Quiz Generator</h3>
+
+            <p className="text-gray-400 leading-relaxed">
+              Generate quizzes from your notes and test your understanding
+              instantly.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-2xl border border-gray-800 bg-gray-950 hover:border-gray-600 transition">
+            <div className="text-3xl mb-5">🎤</div>
+
+            <h3 className="text-xl font-semibold mb-3">
+              Interview Preparation
+            </h3>
+
+            <p className="text-gray-400 leading-relaxed">
+              Practice AI-generated interview questions based on your selected
+              topic.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* ================= FOOTER ================= */}
+      {/* How It Works */}
+      <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <p className="text-blue-400 text-sm font-medium">HOW IT WORKS</p>
 
-      <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-          <p>© 2026 Revise AI. All rights reserved.</p>
-
-          <p>Learn smarter. Prepare better.</p>
+          <h2 className="text-4xl font-bold mt-3">From Notes to Preparation</h2>
         </div>
+
+        <div className="grid md:grid-cols-4 gap-6">
+          {[
+            ["01", "Upload", "Upload your PDF or study material."],
+            ["02", "AI Analyzes", "Revise AI understands your content."],
+            ["03", "Practice", "Generate quizzes and interview questions."],
+            ["04", "Improve", "Analyze your performance and improve."],
+          ].map(([number, title, description]) => (
+            <div
+              key={number}
+              className="p-6 border border-gray-800 rounded-2xl bg-gray-950"
+            >
+              <span className="text-blue-500 font-bold">{number}</span>
+
+              <h3 className="text-xl font-semibold mt-5">{title}</h3>
+
+              <p className="text-gray-400 mt-3">{description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-4xl mx-auto px-6 py-32 text-center">
+        <h2 className="text-4xl md:text-5xl font-bold">
+          Ready to Study Smarter?
+        </h2>
+
+        <p className="text-gray-400 mt-6 text-lg">
+          Start preparing with AI instead of spending hours organizing your
+          study material.
+        </p>
+
+        <button className="mt-8 px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-medium">
+          Start Revising
+        </button>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-800 py-8 text-center text-gray-500">
+        <p>© 2026 Revise AI. All rights reserved.</p>
       </footer>
     </main>
-  );
-}
-
-/* =====================================================
-   FEATURE CARD COMPONENT
-===================================================== */
-
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-400/40">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-400/10 text-2xl">
-        {icon}
-      </div>
-
-      <h3 className="text-xl font-semibold">{title}</h3>
-
-      <p className="mt-3 leading-7 text-slate-400">{description}</p>
-    </div>
-  );
-}
-
-/* =====================================================
-   STEP COMPONENT
-===================================================== */
-
-function Step({
-  number,
-  title,
-  description,
-}: {
-  number: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyan-400 text-lg font-bold text-slate-950">
-        {number}
-      </div>
-
-      <h3 className="mt-6 text-xl font-semibold">{title}</h3>
-
-      <p className="mt-3 leading-7 text-slate-400">{description}</p>
-    </div>
   );
 }
