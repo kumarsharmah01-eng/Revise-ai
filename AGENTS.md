@@ -1,9 +1,45 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# Revise AI - AI Agent Instructions
 
-# This is NOT the Next.js you know
+## Project
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+Revise AI is an AI-powered learning platform that helps students
+revise topics, generate quizzes, prepare for interviews, and analyze
+their performance.
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+## Tech Stack
 
-<!-- END:nextjs-agent-rules -->
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Node.js
+- MongoDB
+- AI API
+
+## Development Rules
+
+- Use TypeScript.
+- Use functional React components.
+- Keep components reusable.
+- Keep code clean and readable.
+- Use meaningful variable and function names.
+- Do not expose API keys in frontend code.
+- Store secrets in environment variables.
+- Validate user input.
+- Make the application responsive.
+- Avoid unnecessary dependencies.
+
+## UI
+
+- Modern AI/SaaS design
+- Responsive
+- Clean dashboard
+- Accessible UI
+- Consistent spacing and typography
+
+## Security
+
+- Never commit `.env` files.
+- Never expose API keys.
+- Never trust client-side input.
+- Validate data on the server.

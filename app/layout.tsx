@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Revise AI | Study Smarter",
   description:
-    "AI-powered learning platform for revision, quizzes and interview preparation.",
+    "AI-powered platform for revision, quizzes and interview preparation.",
 };
 
 export default function RootLayout({
