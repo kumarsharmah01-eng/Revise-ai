@@ -1,90 +1,89 @@
-import OpenAI from "openai";
+import { GoogleGenAI, Type } from "@google/genai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 const generateQuiz = async (text, numberOfQuestions = 5) => {
   try {
-    const response = await openai.responses.create({
-      model: "gpt-5.6-luna",
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
 
-      input: [
-        {
-          role: "system",
-          content:
-            "You are an expert educational quiz generator. Generate accurate multiple-choice questions strictly from the provided study material.",
-        },
-        {
-          role: "user",
-          content: `
-Generate ${numberOfQuestions} multiple-choice questions from the following study material.
+      contents: `
+You are an expert educational quiz generator.
+
+Generate exactly ${numberOfQuestions} multiple-choice questions
+from the study material below.
 
 Rules:
-- Questions must be based only on the provided material.
+- Use ONLY information from the study material.
 - Each question must have exactly 4 options.
-- Only one option should be correct.
-- Include a short explanation for the correct answer.
-- Make the questions useful for exam preparation.
-- Return only the requested JSON structure.
+- Only one option can be correct.
+- correctAnswer must be the index of the correct option.
+- Index starts from 0.
+- Give a short explanation for every answer.
+- Questions should be useful for exam preparation.
+- Avoid duplicate questions.
 
 Study Material:
+
 ${text}
 `,
-        },
-      ],
 
-      text: {
-        format: {
-          type: "json_schema",
-          name: "quiz",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              questions: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    question: {
-                      type: "string",
-                    },
-                    options: {
-                      type: "array",
-                      items: {
-                        type: "string",
-                      },
-                    },
-                    correctAnswer: {
-                      type: "integer",
-                    },
-                    explanation: {
-                      type: "string",
+      config: {
+        responseMimeType: "application/json",
+
+        responseSchema: {
+          type: Type.OBJECT,
+
+          properties: {
+            questions: {
+              type: Type.ARRAY,
+
+              items: {
+                type: Type.OBJECT,
+
+                properties: {
+                  question: {
+                    type: Type.STRING,
+                  },
+
+                  options: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.STRING,
                     },
                   },
-                  required: [
-                    "question",
-                    "options",
-                    "correctAnswer",
-                    "explanation",
-                  ],
-                  additionalProperties: false,
+
+                  correctAnswer: {
+                    type: Type.INTEGER,
+                  },
+
+                  explanation: {
+                    type: Type.STRING,
+                  },
                 },
+
+                required: [
+                  "question",
+                  "options",
+                  "correctAnswer",
+                  "explanation",
+                ],
               },
             },
-            required: ["questions"],
-            additionalProperties: false,
           },
+
+          required: ["questions"],
         },
       },
     });
 
-    return JSON.parse(response.output_text);
+    return JSON.parse(response.text);
   } catch (error) {
     console.error("AI Quiz Generation Error:", error);
-    throw new Error("Failed to generate quiz");
+
+    throw new Error(error?.message || "Failed to generate quiz");
   }
 };
-
 export default generateQuiz;
