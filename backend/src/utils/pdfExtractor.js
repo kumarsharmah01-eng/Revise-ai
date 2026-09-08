@@ -1,14 +1,22 @@
 import fs from "fs";
-import pdf from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 const extractTextFromPDF = async (filePath) => {
   try {
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdf(dataBuffer);
-    return data.text;
+
+    const parser = new PDFParse({
+      data: dataBuffer,
+    });
+
+    const result = await parser.getText();
+
+    await parser.destroy();
+
+    return result.text;
   } catch (error) {
-    console.log("PDF extraxtion error :", error);
-    throw new Error("failed to extract text from PDF");
+    console.log("PDF extraction error:", error);
+    throw new Error("Failed to extract text from PDF");
   }
 };
 

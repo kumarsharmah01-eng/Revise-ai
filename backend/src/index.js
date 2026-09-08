@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import connectDB from "./db/index.js";
 import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploads.routes.js";
+import materialRoutes from "./routes/material.routes.js";
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ app.use("/api/auth", authRoutes);
 
 //upload
 app.use("/api/upload", uploadRoutes);
+
+//material routes
+app.use("/api/materials", materialRoutes);
 
 // Test route
 app.get("/", (req, res) => {
