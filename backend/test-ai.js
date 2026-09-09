@@ -1,8 +1,22 @@
 import "dotenv/config";
+import { GoogleGenAI } from "@google/genai";
 
-const key = process.env.GEMINI_API_KEY;
+console.log("Key exists:", !!process.env.GEMINI_API_KEY);
+console.log("Key length:", process.env.GEMINI_API_KEY?.length);
 
-console.log("Key exists:", !!key);
-console.log("Key length:", key?.length);
-console.log("Key starts with:", key?.substring(0, 4));
-console.log("Key ends with:", key?.slice(-4));
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
+try {
+  const response = await ai.models.generateContent({
+    model: "gemini-3.6-flash",
+    contents: "Say hello in one short sentence.",
+  });
+
+  console.log("GEMINI RESPONSE:");
+  console.log(response.text);
+} catch (error) {
+  console.error("GEMINI ERROR:");
+  console.error(error.message);
+}

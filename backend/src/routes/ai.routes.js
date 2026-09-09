@@ -1,15 +1,16 @@
 import express from "express";
+
 import authMiddleware from "../middleware/authMiddleware.js";
 import StudyMaterial from "../models/studyMaterial.js";
-import generateQuiz from "../utils/aiGenerator.js";
+
+import { generateSummary } from "../utils/aiGenerator.js";
 
 const router = express.Router();
 
-router.post("/generate-quiz", authMiddleware, async (req, res) => {
+router.post("/summary", authMiddleware, async (req, res) => {
   try {
-    const { materialId, numberOfQuestions = 5 } = req.body || {};
+    const { materialId } = req.body;
 
-    // Check materialId
     if (!materialId) {
       return res.status(400).json({
         success: false,
@@ -17,7 +18,6 @@ router.post("/generate-quiz", authMiddleware, async (req, res) => {
       });
     }
 
-    // Find material belonging to logged-in user
     const material = await StudyMaterial.findOne({
       _id: materialId,
       userId: req.user.userId,
@@ -30,20 +30,28 @@ router.post("/generate-quiz", authMiddleware, async (req, res) => {
       });
     }
 
-    // Generate quiz using Gemini
-    const quiz = await generateQuiz(material.extractedText, numberOfQuestions);
+    if (!material.extractedText) {
+      return res.status(400).json({
+        success: false,
+        message: "No extracted text found",
+      });
+    }
+
+    console.log("Generating summary for:", material.originalName);
+
+    const summary = await generateSummary(material.extractedText);
 
     return res.status(200).json({
       success: true,
-      message: "Quiz generated successfully",
-      quiz,
+      message: "Summary generated successfully",
+      summary,
     });
   } catch (error) {
-    console.error("Generate quiz error:", error);
+    console.error("Summary Error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to generate quiz",
+      message: "Failed to generate summary",
       error: error.message,
     });
   }

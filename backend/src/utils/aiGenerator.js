@@ -1,89 +1,30 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
-const generateQuiz = async (text, numberOfQuestions = 5) => {
+import { GoogleGenAI } from "@google/genai";
+export const generateSummary = async (text) => {
   try {
+    console.log("Checking Gemini API key...");
+    console.log("Key exists:", !!process.env.GEMINI_API_KEY);
+    console.log("Key length:", process.env.GEMINI_API_KEY?.length);
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not loaded");
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    console.log("Calling Gemini...");
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-
-      contents: `
-You are an expert educational quiz generator.
-
-Generate exactly ${numberOfQuestions} multiple-choice questions
-from the study material below.
-
-Rules:
-- Use ONLY information from the study material.
-- Each question must have exactly 4 options.
-- Only one option can be correct.
-- correctAnswer must be the index of the correct option.
-- Index starts from 0.
-- Give a short explanation for every answer.
-- Questions should be useful for exam preparation.
-- Avoid duplicate questions.
-
-Study Material:
-
-${text}
-`,
-
-      config: {
-        responseMimeType: "application/json",
-
-        responseSchema: {
-          type: Type.OBJECT,
-
-          properties: {
-            questions: {
-              type: Type.ARRAY,
-
-              items: {
-                type: Type.OBJECT,
-
-                properties: {
-                  question: {
-                    type: Type.STRING,
-                  },
-
-                  options: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.STRING,
-                    },
-                  },
-
-                  correctAnswer: {
-                    type: Type.INTEGER,
-                  },
-
-                  explanation: {
-                    type: Type.STRING,
-                  },
-                },
-
-                required: [
-                  "question",
-                  "options",
-                  "correctAnswer",
-                  "explanation",
-                ],
-              },
-            },
-          },
-
-          required: ["questions"],
-        },
-      },
+      model: "gemini-3.6-flash",
+      contents: ` You are Revise-AI, an AI study assistant. Create a clear and concise summary of the following study material.
+       Rules: 
+        - Use simple language
+        - Keep all important concepts 
+        - Use headings and bullet points 
+        - Remove unnecessary repetition 
+        - Make it useful for exam revision 
+        - Do not add information that is not present in the study material Study Material: ${text} `,
     });
+    console.log("Gemini response received");
 
-    return JSON.parse(response.text);
+    return response.text;
   } catch (error) {
-    console.error("AI Quiz Generation Error:", error);
-
-    throw new Error(error?.message || "Failed to generate quiz");
+    console.error("AI Generator Error:", error);
+    throw new Error(error?.message || "Failed to generate summary");
   }
 };
-export default generateQuiz;

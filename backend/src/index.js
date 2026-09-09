@@ -24,6 +24,11 @@ app.use("/api/upload", uploadRoutes);
 //material routes
 app.use("/api/materials", materialRoutes);
 
+console.log(
+  "Gemini API Key:",
+  process.env.GEMINI_API_KEY ? "LOADED" : "NOT LOADED",
+);
+
 //ai routes
 app.use("/api/ai", aiRoutes);
 
