@@ -4,6 +4,7 @@ import upload from "../middleware/upload.middleware.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import extractTextFromPDF from "../utils/pdfExtractor.js";
 import StudyMaterial from "../models/studyMaterial.js";
+import { extractTextFromImage } from "../utils/aiGenerator.js";
 
 const router = express.Router();
 
@@ -17,8 +18,34 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       });
     }
 
-    // Extract text from PDF
-    const extractedText = await extractTextFromPDF(req.file.path);
+    let extractedText = "";
+
+    // PDF → Extract text using PDF extractor
+    if (req.file.mimetype === "application/pdf") {
+      extractedText = await extractTextFromPDF(req.file.path);
+    }
+
+    // JPG / PNG → We will process with Gemini later
+    else if (
+      req.file.mimetype === "image/jpeg" ||
+      req.file.mimetype === "image/png"
+    ) {
+      console.log("Processing image with Gemini...");
+
+      extractedText = await extractTextFromImage(
+        req.file.path,
+        req.file.mimetype,
+      );
+
+      console.log("Extracted text preview:", extractedText.substring(0, 300));
+    }
+    // Unsupported file type
+    else {
+      return res.status(400).json({
+        success: false,
+        message: "Unsupported file type",
+      });
+    }
 
     // Save study material in MongoDB
     const studyMaterial = await StudyMaterial.create({
@@ -34,7 +61,6 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "File uploaded and saved successfully",
-
       material: {
         id: studyMaterial._id,
         originalName: studyMaterial.originalName,
