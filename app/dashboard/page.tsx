@@ -16,7 +16,10 @@ export default function DashboardPage() {
 
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [quizLoading, setQuizLoading] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   // ==========================================
@@ -158,6 +161,99 @@ export default function DashboardPage() {
       setDeleteLoading(null);
     }
   };
+  const handleGenerateSummary = async (materialId: string) => {
+    try {
+      setSummaryLoading(materialId);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please login first.");
+        return;
+      }
+
+      const response = await fetch("http://localhost:5000/api/ai/summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          materialId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to generate summary");
+      }
+
+      console.log("Summary generated:", data);
+
+      // Store summary temporarily
+      sessionStorage.setItem("reviseAISummary", JSON.stringify(data.summary));
+
+      sessionStorage.setItem("reviseAIMaterialId", materialId);
+
+      // Go to summary page
+      router.push("/dashboard/summary");
+    } catch (error: any) {
+      console.error("Summary Generation Error:", error);
+      setError(error.message || "Failed to generate summary");
+    } finally {
+      setSummaryLoading(null);
+    }
+  };
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      setError("Please select a file first.");
+      return;
+    }
+
+    try {
+      setUploadLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please login first.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch("http://localhost:5000/api/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Upload failed");
+      }
+
+      console.log("Upload successful:", data);
+
+      // Clear selected file
+      setSelectedFile(null);
+
+      // Refresh materials
+      await fetchMaterials();
+    } catch (error: any) {
+      console.error("Upload Error:", error);
+      setError(error.message || "Failed to upload file");
+    } finally {
+      setUploadLoading(false);
+    }
+  };
 
   // ==========================================
   // LOGOUT
@@ -287,17 +383,43 @@ export default function DashboardPage() {
               {/* No Materials */}
 
               {!loading && materials.length === 0 && !error && (
-                <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900 p-10 text-center">
-                  <h4 className="text-lg font-semibold">
-                    No study materials yet
-                  </h4>
+                <div className="mb-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
+                  <h3 className="text-xl font-bold">Upload Study Material</h3>
 
-                  <p className="mt-2 text-sm text-slate-400">
-                    Upload a PDF, JPG or PNG to start learning.
+                  <p className="mt-1 text-sm text-slate-400">
+                    Upload a PDF, JPG or PNG and let Revise AI analyze it.
                   </p>
+
+                  <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setSelectedFile(file);
+                      }}
+                      className="block w-full rounded-lg border border-slate-700 bg-slate-800 p-3 text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-blue-500"
+                    />
+
+                    <button
+                      onClick={handleUpload}
+                      disabled={!selectedFile || uploadLoading}
+                      className="rounded-lg bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {uploadLoading ? "Uploading..." : "Upload"}
+                    </button>
+                  </div>
+
+                  {selectedFile && (
+                    <p className="mt-3 text-sm text-slate-400">
+                      Selected:{" "}
+                      <span className="text-slate-200">
+                        {selectedFile.name}
+                      </span>
+                    </p>
+                  )}
                 </div>
               )}
-
               {/* Material Cards */}
 
               {!loading && materials.length > 0 && (
@@ -332,6 +454,15 @@ export default function DashboardPage() {
                       </p>
 
                       {/* Generate Quiz */}
+                      <button
+                        onClick={() => handleGenerateSummary(material._id)}
+                        disabled={summaryLoading === material._id}
+                        className="mt-5 w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 font-medium text-blue-400 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {summaryLoading === material._id
+                          ? "Generating Summary..."
+                          : "Generate Summary"}
+                      </button>
 
                       <button
                         onClick={() => handleGenerateQuiz(material._id)}
@@ -342,6 +473,7 @@ export default function DashboardPage() {
                           ? "Generating Quiz..."
                           : "Generate Quiz"}
                       </button>
+
                       <button
                         onClick={() => handleDeleteMaterial(material._id)}
                         disabled={deleteLoading === material._id}
