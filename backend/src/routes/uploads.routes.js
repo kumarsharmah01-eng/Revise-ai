@@ -5,6 +5,7 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import extractTextFromPDF from "../utils/pdfExtractor.js";
 import StudyMaterial from "../models/studyMaterial.js";
 import { extractTextFromImage } from "../utils/aiGenerator.js";
+import fs from "fs/promises";
 
 const router = express.Router();
 
@@ -81,4 +82,44 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
   }
 });
 
+// Delete study material
+// DELETE study material
+router.delete("/:id", authMiddleware, async (req, res) => {
+  try {
+    const material = await StudyMaterial.findOne({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: "Study material not found",
+      });
+    }
+
+    // Delete physical file from uploads folder
+    try {
+      await fs.unlink(material.filePath);
+    } catch (fileError) {
+      console.log("File already deleted or not found:", fileError.message);
+    }
+
+    // Delete MongoDB document
+    await StudyMaterial.findByIdAndDelete(material._id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Study material deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete material error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete study material",
+      error: error.message,
+    });
+  }
+});
 export default router;

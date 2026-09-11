@@ -6,18 +6,53 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    console.log("Login Details:", {
-      email,
-      password,
-    });
+    setLoading(true);
+    setError("");
 
-    router.push("/dashboard");
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log("Login Response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      // Save JWT token
+      localStorage.setItem("token", data.token);
+
+      console.log("Token saved successfully");
+
+      // Go to dashboard
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Login Error:", error);
+
+      setError(error.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,6 +73,13 @@ export default function LoginPage() {
 
         {/* Login Card */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
+          {/* Error */}
+          {error && (
+            <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email */}
             <div>
@@ -70,9 +112,10 @@ export default function LoginPage() {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full rounded-lg bg-blue-600 py-3 font-semibold transition hover:bg-blue-700"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 py-3 font-semibold transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Login
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
