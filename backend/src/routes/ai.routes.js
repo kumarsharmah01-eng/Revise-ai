@@ -137,26 +137,82 @@ router.post("/quiz", authMiddleware, async (req, res) => {
       });
     }
 
-    // Quiz requires extracted text
-    if (!material.extractedText) {
-      return res.status(400).json({
-        success: false,
-        message: "No extracted text found for this material",
-      });
-    }
-
-    // Prevent quiz from using old placeholder
-    if (material.extractedText === "IMAGE_PENDING_AI_PROCESSING") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This image was uploaded before AI text extraction was enabled. Please upload the image again.",
-      });
-    }
-
     console.log("Generating quiz for:", material.originalName);
+    console.log("File type:", material.mimeType);
 
-    const quiz = await generateQuiz(material.extractedText);
+    let studyText = material.extractedText;
+
+    // ==========================================
+    // IMAGE → Gemini Vision → Extract Text
+    // ==========================================
+
+    if (
+      material.mimeType === "image/jpeg" ||
+      material.mimeType === "image/png"
+    ) {
+      console.log("Image detected. Extracting text using Gemini Vision...");
+
+      studyText = await extractTextFromImage(
+        material.filePath,
+        material.mimeType,
+      );
+
+      if (!studyText || !studyText.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Could not extract study content from this image",
+        });
+      }
+
+      console.log("Image study content extracted successfully");
+    }
+
+    // ==========================================
+    // PDF → Existing Extracted Text
+    // ==========================================
+    else if (material.mimeType === "application/pdf") {
+      if (!studyText || !studyText.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "No extracted text found for this PDF",
+        });
+      }
+
+      // Prevent old placeholder
+      if (studyText === "IMAGE_PENDING_AI_PROCESSING") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "This material was uploaded before AI text extraction was enabled. Please upload the material again.",
+        });
+      }
+
+      console.log("PDF extracted text found successfully");
+    }
+
+    // ==========================================
+    // Unsupported file
+    // ==========================================
+    else {
+      return res.status(400).json({
+        success: false,
+        message: "Unsupported file type",
+      });
+    }
+
+    // ==========================================
+    // Generate Quiz
+    // ==========================================
+
+    console.log("Sending study material to Gemini for quiz...");
+
+    const quiz = await generateQuiz(studyText);
+
+    console.log("Quiz generated successfully");
+
+    // ==========================================
+    // Final response
+    // ==========================================
 
     return res.status(200).json({
       success: true,
