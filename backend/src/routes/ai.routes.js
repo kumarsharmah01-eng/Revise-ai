@@ -3,7 +3,7 @@ import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 
 import StudyMaterial from "../models/studyMaterial.js";
-
+import Summary from "../models/summary.js";
 import {
   generateSummary,
   extractTextFromImage,
@@ -101,6 +101,31 @@ router.post("/summary", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to generate summary",
+      error: error.message,
+    });
+  }
+});
+router.get("/summaries", authMiddleware, async (req, res) => {
+  try {
+    console.log("Fetching summaries for user:", req.user.userId);
+
+    const summaries = await Summary.find({
+      userId: req.user.userId,
+    })
+      .populate("materialId", "originalName fileName mimeType")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: summaries.length,
+      summaries,
+    });
+  } catch (error) {
+    console.error("Get Summaries Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch summaries",
       error: error.message,
     });
   }
