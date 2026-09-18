@@ -90,10 +90,27 @@ router.post("/summary", authMiddleware, async (req, res) => {
     // Final response
     // ==========================================
 
+    // ==========================================
+    // Save summary to MongoDB
+    // ==========================================
+
+    const savedSummary = await Summary.create({
+      userId: req.user.userId,
+      materialId: material._id,
+      content: summary,
+    });
+
+    console.log("Summary saved successfully:", savedSummary._id);
+
+    // ==========================================
+    // Final response
+    // ==========================================
+
     return res.status(200).json({
       success: true,
       message: "Summary generated successfully",
-      summary,
+      summary: savedSummary.content,
+      summaryId: savedSummary._id,
     });
   } catch (error) {
     console.error("Summary Error:", error);
@@ -105,15 +122,17 @@ router.post("/summary", authMiddleware, async (req, res) => {
     });
   }
 });
+//get summary history
+
 router.get("/summaries", authMiddleware, async (req, res) => {
   try {
-    console.log("Fetching summaries for user:", req.user.userId);
+    console.log("Fetching summaries for:", req.user.userId);
 
     const summaries = await Summary.find({
       userId: req.user.userId,
-    })
-      .populate("materialId", "originalName fileName mimeType")
-      .sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 });
+
+    console.log("Summaries found:", summaries);
 
     return res.status(200).json({
       success: true,
@@ -121,11 +140,88 @@ router.get("/summaries", authMiddleware, async (req, res) => {
       summaries,
     });
   } catch (error) {
-    console.error("Get Summaries Error:", error);
+    console.error("GET SUMMARIES ERROR:", error);
 
     return res.status(500).json({
       success: false,
       message: "Failed to fetch summaries",
+      error: error.message,
+    });
+  }
+});
+//save summary
+router.post("/summaries", authMiddleware, async (req, res) => {
+  try {
+    const { materialId, content } = req.body;
+
+    if (!materialId || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "materialId and content are required",
+      });
+    }
+
+    // Make sure material belongs to logged-in user
+    const material = await StudyMaterial.findOne({
+      _id: materialId,
+      userId: req.user.userId,
+    });
+
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: "Study material not found",
+      });
+    }
+
+    const savedSummary = await Summary.create({
+      userId: req.user.userId,
+      materialId: material._id,
+      content,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Summary saved successfully",
+      summary: savedSummary,
+    });
+  } catch (error) {
+    console.error("SAVE SUMMARY ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to save summary",
+      error: error.message,
+    });
+  }
+});
+// delete summary
+router.delete("/summaries/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedSummary = await Summary.findOneAndDelete({
+      _id: id,
+      userId: req.user.userId,
+    });
+
+    if (!deletedSummary) {
+      return res.status(404).json({
+        success: false,
+        message: "Summary not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Summary deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE SUMMARY ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete summary",
       error: error.message,
     });
   }
