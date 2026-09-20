@@ -27,7 +27,9 @@ export default function DashboardPage() {
 
   const [summaryData, setSummaryData] = useState<any>(null);
   const [quizData, setQuizData] = useState<any>(null);
-
+  const [summaryDeleteLoading, setSummaryDeleteLoading] = useState<
+    string | null
+  >(null);
   // ==========================================
   // REVISION / SAVED SUMMARIES
   // ==========================================
@@ -309,6 +311,53 @@ export default function DashboardPage() {
       setError(error.message || "Failed to save summary");
     }
   };
+  const handleDeleteSummary = async (summaryId: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this saved summary?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setSummaryDeleteLoading(summaryId);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please login first.");
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:5000/api/ai/summaries/${summaryId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to delete summary");
+      }
+
+      // Remove from UI immediately
+      setSavedSummaries((prev) =>
+        prev.filter((summary) => summary._id !== summaryId),
+      );
+
+      console.log("Summary deleted:", data);
+    } catch (error: any) {
+      console.error("DELETE SUMMARY ERROR:", error);
+      setError(error.message || "Failed to delete summary");
+    } finally {
+      setSummaryDeleteLoading(null);
+    }
+  };
 
   // ==========================================
   // GENERATE QUIZ
@@ -484,7 +533,10 @@ export default function DashboardPage() {
             {/* Revision */}
 
             <button
-              onClick={() => setActiveSection("revision")}
+              onClick={() => {
+                setActiveSection("revision");
+                fetchSavedSummaries();
+              }}
               className={getSidebarClass("revision")}
             >
               <span>Revision</span>
@@ -792,46 +844,77 @@ export default function DashboardPage() {
             )}
 
             {/* ==================================================
-                REVISION
-            ================================================== */}
+    REVISION
+================================================== */}
 
             {activeSection === "revision" && (
               <div>
+                {/* Loading */}
                 {revisionLoading && (
-                  <p className="text-slate-400">Loading saved summaries...</p>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
+                    <p className="text-slate-400">Loading saved summaries...</p>
+                  </div>
                 )}
 
+                {/* Empty State */}
                 {!revisionLoading && savedSummaries.length === 0 && !error && (
                   <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
                     <h3 className="text-xl font-bold">
                       No saved summaries yet
                     </h3>
-                    <p className="mt-2 text-slate-400">
+
+                    <p className="mt-2 text-sm text-slate-400">
                       Generate a summary and click Save Summary to see it here.
                     </p>
                   </div>
                 )}
 
-                <div className="grid gap-5 lg:grid-cols-2">
-                  {savedSummaries.map((s) => (
-                    <div
-                      key={s._id}
-                      className="rounded-xl border border-slate-800 bg-slate-900 p-6"
-                    >
-                      <h4 className="font-semibold">
-                        {typeof s.materialId === "object"
-                          ? s.materialId?.originalName
-                          : "Study Material"}
-                      </h4>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Saved on {new Date(s.createdAt).toLocaleDateString()}
-                      </p>
-                      <div className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-slate-300">
-                        {cleanSummary(s.content)}
+                {/* Saved Summaries */}
+                {!revisionLoading && savedSummaries.length > 0 && (
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    {savedSummaries.map((summary) => (
+                      <div
+                        key={summary._id}
+                        className="rounded-xl border border-slate-800 bg-slate-900 p-6"
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h4 className="truncate text-lg font-semibold">
+                              {typeof summary.materialId === "object"
+                                ? summary.materialId?.originalName ||
+                                  "Study Material"
+                                : "Study Material"}
+                            </h4>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                              Saved on{" "}
+                              {new Date(summary.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          {/* DELETE BUTTON */}
+                          <button
+                            onClick={() => handleDeleteSummary(summary._id)}
+                            disabled={summaryDeleteLoading === summary._id}
+                            className="shrink-0 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {summaryDeleteLoading === summary._id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </div>
+
+                        {/* Summary Content */}
+                        <div className="mt-4 max-h-64 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                          <div className="whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                            {cleanSummary(summary.content)}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
