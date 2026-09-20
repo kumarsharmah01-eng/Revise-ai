@@ -126,26 +126,25 @@ router.post("/summary", authMiddleware, async (req, res) => {
 
 router.get("/summaries", authMiddleware, async (req, res) => {
   try {
-    console.log("Fetching summaries for:", req.user.userId);
-
     const summaries = await Summary.find({
       userId: req.user.userId,
-    }).sort({ createdAt: -1 });
+    })
+      .populate("materialId", "originalName fileName mimeType")
+      .sort({ createdAt: -1 });
 
-    console.log("Summaries found:", summaries);
+    console.log("FOUND SUMMARIES:", summaries);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       count: summaries.length,
       summaries,
     });
   } catch (error) {
-    console.error("GET SUMMARIES ERROR:", error);
+    console.error("FETCH SUMMARIES ERROR:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Failed to fetch summaries",
-      error: error.message,
     });
   }
 });

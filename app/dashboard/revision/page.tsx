@@ -5,13 +5,13 @@ import { useEffect, useState } from "react";
 type Material = {
   _id: string;
   originalName: string;
-  fileName: string;
-  mimeType: string;
+  fileName?: string;
+  mimeType?: string;
 };
 
 type Summary = {
   _id: string;
-  materialId: Material;
+  materialId: Material | string;
   content: string;
   createdAt: string;
 };
@@ -21,6 +21,7 @@ export default function RevisionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedSummary, setSelectedSummary] = useState<Summary | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   // ==========================================
   // FETCH SAVED SUMMARIES
@@ -33,6 +34,8 @@ export default function RevisionPage() {
 
       const token = localStorage.getItem("token");
 
+      console.log("TOKEN EXISTS:", !!token);
+
       if (!token) {
         setError("Please login first.");
         return;
@@ -42,18 +45,28 @@ export default function RevisionPage() {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
+      console.log("RESPONSE STATUS:", response.status);
+
       const data = await response.json();
+
+      console.log("REVISION API DATA:", data);
+      console.log("NUMBER OF SUMMARIES:", data.summaries?.length);
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch summaries");
       }
 
-      setSummaries(data.summaries || []);
+      if (!Array.isArray(data.summaries)) {
+        throw new Error("Invalid summaries data received from server");
+      }
+
+      setSummaries(data.summaries);
     } catch (error) {
-      console.error("Fetch summaries error:", error);
+      console.error("FETCH SUMMARIES ERROR:", error);
 
       setError(
         error instanceof Error ? error.message : "Failed to fetch summaries",
@@ -64,7 +77,7 @@ export default function RevisionPage() {
   };
 
   // ==========================================
-  // LOAD SUMMARIES
+  // LOAD SUMMARIES WHEN PAGE OPENS
   // ==========================================
 
   useEffect(() => {
@@ -83,6 +96,8 @@ export default function RevisionPage() {
     if (!confirmDelete) return;
 
     try {
+      setDeleteLoading(summaryId);
+
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -102,6 +117,8 @@ export default function RevisionPage() {
 
       const data = await response.json();
 
+      console.log("DELETE SUMMARY RESPONSE:", data);
+
       if (!response.ok) {
         throw new Error(data.message || "Failed to delete summary");
       }
@@ -116,11 +133,13 @@ export default function RevisionPage() {
         setSelectedSummary(null);
       }
     } catch (error) {
-      console.error("Delete summary error:", error);
+      console.error("DELETE SUMMARY ERROR:", error);
 
       alert(
         error instanceof Error ? error.message : "Failed to delete summary",
       );
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -145,7 +164,6 @@ export default function RevisionPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
       {/* HEADER */}
-
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Revision</h1>
 
@@ -153,7 +171,6 @@ export default function RevisionPage() {
       </div>
 
       {/* ERROR */}
-
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-4 mb-6">
           {error}
@@ -161,7 +178,6 @@ export default function RevisionPage() {
       )}
 
       {/* NO SUMMARIES */}
-
       {!error && summaries.length === 0 && (
         <div className="border border-slate-800 bg-slate-900 rounded-2xl p-10 text-center">
           <div className="text-5xl mb-4">📚</div>
@@ -175,75 +191,87 @@ export default function RevisionPage() {
       )}
 
       {/* SUMMARY CARDS */}
+      {summaries.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {summaries.map((summary) => {
+            // Material can be either populated object or string
+            const material =
+              typeof summary.materialId === "object"
+                ? summary.materialId
+                : null;
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {summaries.map((summary) => (
-          <div
-            key={summary._id}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition"
-          >
-            {/* MATERIAL NAME */}
+            return (
+              <div
+                key={summary._id}
+                className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition"
+              >
+                {/* MATERIAL NAME */}
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">📄</div>
 
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="text-2xl">📄</div>
+                    <div>
+                      <h2 className="font-semibold text-lg">
+                        {material?.originalName || "Study Material"}
+                      </h2>
 
-                <div>
-                  <h2 className="font-semibold text-lg">
-                    {summary.materialId?.originalName || "Study Material"}
-                  </h2>
+                      <p className="text-sm text-slate-500">
+                        Saved on{" "}
+                        {summary.createdAt
+                          ? new Date(summary.createdAt).toLocaleDateString()
+                          : "Unknown date"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                  <p className="text-sm text-slate-500">
-                    Saved on {new Date(summary.createdAt).toLocaleDateString()}
+                {/* SUMMARY PREVIEW */}
+                <div className="bg-slate-950 rounded-xl p-4 mb-5">
+                  <p className="text-slate-300 text-sm line-clamp-4 whitespace-pre-wrap">
+                    {summary.content}
                   </p>
                 </div>
+
+                {/* BUTTONS */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedSummary(summary)}
+                    className="flex-1 bg-white text-slate-950 py-2.5 rounded-lg font-medium hover:bg-slate-200 transition"
+                  >
+                    View Summary
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(summary._id)}
+                    disabled={deleteLoading === summary._id}
+                    className="px-5 py-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+                  >
+                    {deleteLoading === summary._id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* SUMMARY PREVIEW */}
-
-            <div className="bg-slate-950 rounded-xl p-4 mb-5">
-              <p className="text-slate-300 text-sm line-clamp-4 whitespace-pre-wrap">
-                {summary.content}
-              </p>
-            </div>
-
-            {/* BUTTONS */}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSelectedSummary(summary)}
-                className="flex-1 bg-white text-slate-950 py-2.5 rounded-lg font-medium hover:bg-slate-200 transition"
-              >
-                View Summary
-              </button>
-
-              <button
-                onClick={() => handleDelete(summary._id)}
-                className="px-5 py-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* SUMMARY MODAL */}
-
       {selectedSummary && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden">
             {/* MODAL HEADER */}
-
             <div className="flex items-center justify-between p-6 border-b border-slate-800">
               <div>
                 <h2 className="text-xl font-bold">
-                  {selectedSummary.materialId?.originalName || "Summary"}
+                  {typeof selectedSummary.materialId === "object"
+                    ? selectedSummary.materialId?.originalName
+                    : "Summary"}
                 </h2>
 
                 <p className="text-sm text-slate-500 mt-1">
-                  {new Date(selectedSummary.createdAt).toLocaleString()}
+                  {selectedSummary.createdAt
+                    ? new Date(selectedSummary.createdAt).toLocaleString()
+                    : ""}
                 </p>
               </div>
 
@@ -256,7 +284,6 @@ export default function RevisionPage() {
             </div>
 
             {/* MODAL CONTENT */}
-
             <div className="p-6 overflow-y-auto max-h-[65vh]">
               <div className="text-slate-200 whitespace-pre-wrap leading-7">
                 {selectedSummary.content}
@@ -264,7 +291,6 @@ export default function RevisionPage() {
             </div>
 
             {/* MODAL FOOTER */}
-
             <div className="p-6 border-t border-slate-800 flex justify-end">
               <button
                 onClick={() => setSelectedSummary(null)}

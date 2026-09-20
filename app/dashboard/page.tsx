@@ -28,6 +28,12 @@ export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [quizData, setQuizData] = useState<any>(null);
 
+  // ==========================================
+  // REVISION / SAVED SUMMARIES
+  // ==========================================
+  const [savedSummaries, setSavedSummaries] = useState<any[]>([]);
+  const [revisionLoading, setRevisionLoading] = useState(false);
+
   const [error, setError] = useState("");
 
   // ==========================================
@@ -70,6 +76,43 @@ export default function DashboardPage() {
       setError(error.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+  // ==========================================
+  // FETCH SAVED SUMMARIES
+  // ==========================================
+
+  const fetchSavedSummaries = async () => {
+    try {
+      setRevisionLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please login first.");
+        return;
+      }
+
+      const response = await fetch("http://localhost:5000/api/ai/summaries", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch saved summaries");
+      }
+
+      setSavedSummaries(data.summaries || []);
+    } catch (error: any) {
+      console.error("FETCH SUMMARIES ERROR:", error);
+      setError(error.message || "Failed to load summaries");
+    } finally {
+      setRevisionLoading(false);
     }
   };
 
@@ -213,6 +256,59 @@ export default function DashboardPage() {
       setSummaryLoading(null);
     }
   };
+  // ==========================================
+  // SAVE SUMMARY
+  // ==========================================
+
+  const handleSaveSummary = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please login first.");
+        return;
+      }
+
+      const materialId = sessionStorage.getItem("reviseAIMaterialId");
+      const summary = sessionStorage.getItem("reviseAISummary");
+
+      if (!materialId) {
+        setError("Material ID is missing.");
+        return;
+      }
+
+      if (!summary) {
+        setError("Summary content is missing.");
+        return;
+      }
+
+      const response = await fetch("http://localhost:5000/api/ai/summaries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+
+        body: JSON.stringify({
+          materialId: materialId,
+          content: summary,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to save summary");
+      }
+
+      console.log("Summary saved:", data);
+
+      alert("Summary saved successfully!");
+    } catch (error: any) {
+      console.error("SAVE SUMMARY ERROR:", error);
+      setError(error.message || "Failed to save summary");
+    }
+  };
 
   // ==========================================
   // GENERATE QUIZ
@@ -343,19 +439,27 @@ export default function DashboardPage() {
         : "text-slate-400 hover:bg-slate-800 hover:text-white"
     }`;
   };
+  const cleanSummary = (text: string) => {
+    try {
+      const parsed = JSON.parse(text);
+      return typeof parsed === "string" ? parsed : text;
+    } catch {
+      return text;
+    }
+  };
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="flex min-h-screen">
+    <main className="h-screen overflow-hidden bg-slate-950 text-white">
+      <div className="flex h-screen">
         {/* =========================
             SIDEBAR
         ========================== */}
 
-        <aside className="hidden w-64 border-r border-slate-800 bg-slate-900 md:block">
+        <aside className="relative hidden h-screen w-64 shrink-0 border-r border-slate-800 bg-slate-900 md:block">
           {/* Logo */}
 
           <div className="border-b border-slate-800 px-6 py-6">
@@ -432,7 +536,7 @@ export default function DashboardPage() {
             MAIN AREA
         ========================== */}
 
-        <section className="flex-1">
+        <section className="h-screen flex-1 overflow-y-auto">
           {/* HEADER */}
 
           <div className="border-b border-slate-800 px-8 py-8">
@@ -693,18 +797,40 @@ export default function DashboardPage() {
 
             {activeSection === "revision" && (
               <div>
-                <div className="rounded-xl border border-slate-800 bg-slate-900 p-8">
-                  <h3 className="text-xl font-bold">Saved Summaries</h3>
+                {revisionLoading && (
+                  <p className="text-slate-400">Loading saved summaries...</p>
+                )}
 
-                  <p className="mt-2 text-slate-400">
-                    Your saved AI-generated summaries will appear here.
-                  </p>
-
-                  <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950 p-6">
-                    <p className="text-slate-500">
-                      Revision functionality is ready to be connected here.
+                {!revisionLoading && savedSummaries.length === 0 && !error && (
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
+                    <h3 className="text-xl font-bold">
+                      No saved summaries yet
+                    </h3>
+                    <p className="mt-2 text-slate-400">
+                      Generate a summary and click Save Summary to see it here.
                     </p>
                   </div>
+                )}
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  {savedSummaries.map((s) => (
+                    <div
+                      key={s._id}
+                      className="rounded-xl border border-slate-800 bg-slate-900 p-6"
+                    >
+                      <h4 className="font-semibold">
+                        {typeof s.materialId === "object"
+                          ? s.materialId?.originalName
+                          : "Study Material"}
+                      </h4>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Saved on {new Date(s.createdAt).toLocaleDateString()}
+                      </p>
+                      <div className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                        {cleanSummary(s.content)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -821,8 +947,8 @@ export default function DashboardPage() {
             )}
 
             {/* ==================================================
-                AI SUMMARY
-            ================================================== */}
+    AI SUMMARY
+================================================== */}
 
             {activeSection === "summary" && summaryData && (
               <div>
@@ -834,7 +960,23 @@ export default function DashboardPage() {
                 </button>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-                  <h3 className="text-xl font-bold">Generated Summary</h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold">Generated Summary</h3>
+
+                      <p className="mt-1 text-sm text-slate-400">
+                        Review your AI-generated summary before saving it.
+                      </p>
+                    </div>
+
+                    {/* SAVE BUTTON */}
+                    <button
+                      onClick={handleSaveSummary}
+                      className="rounded-lg bg-blue-600 px-5 py-3 font-medium transition hover:bg-blue-500"
+                    >
+                      Save Summary
+                    </button>
+                  </div>
 
                   <div className="mt-6 whitespace-pre-wrap leading-7 text-slate-300">
                     {typeof summaryData === "string"
