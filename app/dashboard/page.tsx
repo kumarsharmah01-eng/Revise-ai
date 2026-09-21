@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   const [activeSection, setActiveSection] = useState("dashboard");
-
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<any>(null);
   const [quizData, setQuizData] = useState<any>(null);
   const [summaryDeleteLoading, setSummaryDeleteLoading] = useState<
@@ -38,12 +38,16 @@ export default function DashboardPage() {
 
   const [error, setError] = useState("");
 
+  // ADDED: username state (this was missing, causing setUserName to be undefined)
+  const [userName, setUserName] = useState("");
+
   // ==========================================
   // FETCH MATERIALS
   // ==========================================
 
   useEffect(() => {
     fetchMaterials();
+    fetchUser(); // ADDED: load the username on page load
   }, []);
 
   const fetchMaterials = async () => {
@@ -78,6 +82,32 @@ export default function DashboardPage() {
       setError(error.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+  // ==========================================
+  // FETCH CURRENT USER (for username display)
+  // ==========================================
+
+  const fetchUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) return;
+
+      const response = await fetch("http://localhost:5000/api/auth/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.user?.name) {
+        setUserName(data.user.name);
+      }
+    } catch (error) {
+      console.error("Fetch User Error:", error);
     }
   };
   // ==========================================
@@ -508,19 +538,52 @@ export default function DashboardPage() {
             SIDEBAR
         ========================== */}
 
-        <aside className="relative hidden h-screen w-64 shrink-0 border-r border-slate-800 bg-slate-900 md:block">
+        {/* Mobile overlay (tap outside to close) */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 h-screen w-64 shrink-0 border-r border-slate-800 bg-slate-900 transition-transform duration-300 md:relative md:translate-x-0 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
           {/* Logo */}
 
-          <div className="border-b border-slate-800 px-6 py-6">
+          <div className="flex items-center justify-between border-b border-slate-800 px-6 py-6">
             <h1 className="text-2xl font-bold">
               Revise
               <span className="text-blue-500">AI</span>
             </h1>
+
+            {/* Close button (mobile only) */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
+              aria-label="Close menu"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 6l12 12M18 6L6 18"
+                />
+              </svg>
+            </button>
           </div>
 
           {/* Navigation */}
 
-          <nav className="space-y-2 p-4">
+          <nav className="space-y-2 p-4" onClick={() => setSidebarOpen(false)}>
             {/* Dashboard */}
 
             <button
@@ -563,7 +626,10 @@ export default function DashboardPage() {
 
           {/* Bottom Section */}
 
-          <div className="absolute bottom-0 w-64 border-t border-slate-800 p-4">
+          <div
+            className="absolute bottom-0 w-64 border-t border-slate-800 p-4"
+            onClick={() => setSidebarOpen(false)}
+          >
             {/* Settings */}
 
             <button
@@ -592,9 +658,55 @@ export default function DashboardPage() {
           {/* HEADER */}
 
           <div className="border-b border-slate-800 px-8 py-8">
+            {/* ADDED: USERNAME BAR */}
+            <div className="mb-4 flex items-center gap-3 sm:mb-6">
+              {/* Hamburger (mobile only) */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-lg border border-slate-700 p-2 text-slate-300 transition hover:bg-slate-800 md:hidden"
+                aria-label="Open menu"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
+
+              {/* Logo (mobile only) */}
+              <h1 className="text-lg font-bold md:hidden">
+                Revise<span className="text-blue-500">AI</span>
+              </h1>
+
+              {/* Username + avatar (pushed to the right) */}
+              <div className="ml-auto flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">Signed in as</p>
+                  <p className="max-w-[120px] truncate text-sm font-semibold text-white sm:max-w-none">
+                    {userName || "Loading..."}
+                  </p>
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-lg font-bold">
+                  {userName ? userName.charAt(0).toUpperCase() : "?"}
+                </div>
+              </div>
+            </div>
+
             {activeSection === "dashboard" && (
               <>
-                <h2 className="text-3xl font-bold">Dashboard</h2>
+                {/* ADDED: personal greeting */}
+                <h2 className="text-3xl font-bold">
+                  {userName ? `Welcome back, ${userName}` : "Dashboard"}
+                </h2>
 
                 <p className="mt-2 text-slate-400">Your learning workspace</p>
               </>
