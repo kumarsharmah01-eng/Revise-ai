@@ -24,13 +24,19 @@ const authMiddleware = async (req, res, next) => {
     // Support tokens signed with either `id` or `userId`
     const userId = decoded.id || decoded.userId;
 
-    const user = await User.findById(userId).select("_id isVerified");
+    // Select BOTH verification fields so it works with either schema
+    const user = await User.findById(userId).select(
+      "_id isVerified emailVerified",
+    );
 
     if (!user) {
       return res.status(401).json({ message: "User no longer exists." });
     }
 
-    if (!user.isVerified) {
+    // Logic change: verified if EITHER field is true
+    const verified = user.isVerified === true || user.emailVerified === true;
+
+    if (!verified) {
       return res.status(403).json({ message: "Email not verified." });
     }
 
