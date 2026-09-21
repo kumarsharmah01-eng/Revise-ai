@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/auth";
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -20,7 +22,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -33,7 +35,26 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      console.log("Login Response:", data);
+      // Email not verified: send the user to the OTP page
+      if (response.status === 403 && data.code === "EMAIL_NOT_VERIFIED") {
+        const pendingEmail = data.email || email;
+        sessionStorage.setItem("pendingEmail", pendingEmail);
+
+        // Send a fresh code. If it fails (e.g. cooldown), still continue;
+        // the verify page has its own resend button.
+        try {
+          await fetch(`${API}/resend-code`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: pendingEmail }),
+          });
+        } catch (resendError) {
+          console.error("Resend error:", resendError);
+        }
+
+        router.push("/verify-email");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
@@ -41,8 +62,6 @@ export default function LoginPage() {
 
       // Save JWT token
       localStorage.setItem("token", data.token);
-
-      console.log("Token saved successfully");
 
       // Go to dashboard
       router.push("/dashboard");

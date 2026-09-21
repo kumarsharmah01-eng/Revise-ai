@@ -1,10 +1,9 @@
 import jwt from "jsonwebtoken";
+import User from "../models/user.js";
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-
-    console.log("AUTH HEADER:", authHeader);
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
@@ -14,21 +13,47 @@ const authMiddleware = (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    console.log("TOKEN RECEIVED:", token);
+    if (!token || token === "undefined" || token === "null") {
+      return res.status(401).json({
+        message: "Access denied. Invalid token.",
+      });
+    }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log("TOKEN DECODED:", decoded);
+    // Support tokens signed with either `id` or `userId`
+    const userId = decoded.id || decoded.userId;
 
-    req.user = decoded;
+    const user = await User.findById(userId).select("_id isVerified");
+
+    if (!user) {
+      return res.status(401).json({ message: "User no longer exists." });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: "Email not verified." });
+    }
+
+    // Keep both names so existing controllers keep working
+    req.user = {
+      id: String(user._id),
+      userId: String(user._id),
+      _id: user._id,
+    };
 
     next();
   } catch (error) {
     console.log("JWT ERROR:", error.message);
 
-    return res.status(401).json({
-      message: "Invalid or expired token.",
-    });
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ message: "Token expired. Please log in again." });
+    }
+
+    return res
+      .status(401)
+      .json({ message: "Invalid token. Please log in again." });
   }
 };
 

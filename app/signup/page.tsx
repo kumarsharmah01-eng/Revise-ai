@@ -2,20 +2,66 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/auth";
 
 export default function SignupPage() {
+  const router = useRouter();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSignup = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    console.log("Signup:", {
-      name,
-      email,
-      password,
-    });
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API}/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Registration failed");
+        return;
+      }
+
+      // Save email so the verification page knows which account to verify
+      sessionStorage.setItem("pendingEmail", data.email || email);
+
+      setSuccess(data.message || "Verification code sent to your email!");
+
+      // Go to verification page
+      setTimeout(() => {
+        router.push("/verify-email");
+      }, 700);
+    } catch (error) {
+      console.error("SIGNUP ERROR:", error);
+
+      setError(
+        "Unable to connect to server. Make sure your backend is running.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -82,12 +128,27 @@ export default function SignupPage() {
               />
             </div>
 
-            {/* Signup Button */}
+            {/* Error */}
+            {error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            {/* Success */}
+            {success && (
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-400">
+                {success}
+              </div>
+            )}
+
+            {/* Button */}
             <button
               type="submit"
-              className="w-full rounded-lg bg-blue-600 py-3 font-semibold transition hover:bg-blue-700"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 py-3 font-semibold transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Create Account
+              {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 

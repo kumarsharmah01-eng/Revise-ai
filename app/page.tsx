@@ -1,11 +1,13 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold">
+        <Link href="/" className="text-2xl font-bold">
           Revise<span className="text-blue-500">AI</span>
-        </h1>
+        </Link>
 
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
           <a href="#features" className="hover:text-white transition">
@@ -16,12 +18,19 @@ export default function Home() {
             How It Works
           </a>
 
-          <a
+          <Link
             href="/login"
             className="px-5 py-2 rounded-lg border border-gray-700 hover:bg-gray-900 transition"
           >
             Login
-          </a>
+          </Link>
+
+          <Link
+            href="/signup"
+            className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition"
+          >
+            Sign Up
+          </Link>
         </div>
       </nav>
 
@@ -45,13 +54,21 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
-          <button className="px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-medium">
+          {/* Get Started */}
+          <Link
+            href="/signup"
+            className="px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-medium"
+          >
             Get Started
-          </button>
+          </Link>
 
-          <button className="px-7 py-3 rounded-xl border border-gray-700 hover:bg-gray-900 transition font-medium">
+          {/* See How It Works */}
+          <a
+            href="#how-it-works"
+            className="px-7 py-3 rounded-xl border border-gray-700 hover:bg-gray-900 transition font-medium"
+          >
             See How It Works
-          </button>
+          </a>
         </div>
       </section>
 
@@ -147,9 +164,12 @@ export default function Home() {
           study material.
         </p>
 
-        <button className="mt-8 px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-medium">
+        <Link
+          href="/signup"
+          className="inline-block mt-8 px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-medium"
+        >
           Start Revising
-        </button>
+        </Link>
       </section>
 
       {/* Footer */}

@@ -8,6 +8,8 @@ import materialRoutes from "./routes/material.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 
 dotenv.config();
+console.log("EMAIL_USER:", process.env.EMAIL_USER);
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "LOADED" : "MISSING");
 
 const app = express();
 
