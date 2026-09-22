@@ -11,6 +11,59 @@ type Material = {
   fileSize: number;
 };
 
+// ==========================================
+// CIRCULAR PROGRESS CHART
+// ==========================================
+function CircularProgress({
+  percentage,
+  label,
+  color,
+}: {
+  percentage: number;
+  label: string;
+  color: string;
+}) {
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle
+          cx="70"
+          cy="70"
+          r={radius}
+          fill="none"
+          stroke="#1e293b"
+          strokeWidth="12"
+        />
+        <circle
+          cx="70"
+          cy="70"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="12"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform="rotate(-90 70 70)"
+        />
+        <text
+          x="70"
+          y="76"
+          textAnchor="middle"
+          className="fill-white text-2xl font-bold"
+        >
+          {percentage}%
+        </text>
+      </svg>
+      <p className="mt-2 text-center text-sm text-slate-400">{label}</p>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -30,6 +83,20 @@ export default function DashboardPage() {
   const [summaryDeleteLoading, setSummaryDeleteLoading] = useState<
     string | null
   >(null);
+
+  // Quiz-taking state
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizScore, setQuizScore] = useState<{
+    correct: number;
+    total: number;
+  } | null>(null);
+  const [quizSubmitLoading, setQuizSubmitLoading] = useState(false);
+
+  // Progress state
+  const [progressStats, setProgressStats] = useState<any>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+
   // ==========================================
   // REVISION / SAVED SUMMARIES
   // ==========================================
@@ -38,7 +105,6 @@ export default function DashboardPage() {
 
   const [error, setError] = useState("");
 
-  // ADDED: username state (this was missing, causing setUserName to be undefined)
   const [userName, setUserName] = useState("");
 
   // ==========================================
@@ -47,7 +113,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchMaterials();
-    fetchUser(); // ADDED: load the username on page load
+    fetchUser();
   }, []);
 
   const fetchMaterials = async () => {
@@ -84,6 +150,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
   // ==========================================
   // FETCH CURRENT USER (for username display)
   // ==========================================
@@ -110,6 +177,7 @@ export default function DashboardPage() {
       console.error("Fetch User Error:", error);
     }
   };
+
   // ==========================================
   // FETCH SAVED SUMMARIES
   // ==========================================
@@ -145,6 +213,44 @@ export default function DashboardPage() {
       setError(error.message || "Failed to load summaries");
     } finally {
       setRevisionLoading(false);
+    }
+  };
+
+  // ==========================================
+  // FETCH PROGRESS STATS
+  // ==========================================
+
+  const fetchProgressStats = async () => {
+    try {
+      setProgressLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please login first.");
+        return;
+      }
+
+      const response = await fetch("http://localhost:5000/api/progress/stats", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch progress");
+      }
+
+      setProgressStats(data.stats);
+    } catch (error: any) {
+      console.error("FETCH PROGRESS ERROR:", error);
+      setError(error.message || "Failed to load progress");
+    } finally {
+      setProgressLoading(false);
     }
   };
 
@@ -288,6 +394,7 @@ export default function DashboardPage() {
       setSummaryLoading(null);
     }
   };
+
   // ==========================================
   // SAVE SUMMARY
   // ==========================================
@@ -341,6 +448,7 @@ export default function DashboardPage() {
       setError(error.message || "Failed to save summary");
     }
   };
+
   const handleDeleteSummary = async (summaryId: string) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this saved summary?",
@@ -430,6 +538,13 @@ export default function DashboardPage() {
       // Store material ID
       sessionStorage.setItem("reviseAIMaterialId", materialId);
 
+      // FIXED: reset quiz-taking state for the new quiz
+      // (these were previously misplaced outside any function,
+      // which caused an infinite re-render loop)
+      setQuizAnswers({});
+      setQuizSubmitted(false);
+      setQuizScore(null);
+
       // IMPORTANT:
       // Do NOT navigate to /dashboard/quiz.
       // Just change the main content.
@@ -441,6 +556,90 @@ export default function DashboardPage() {
     } finally {
       setQuizLoading(null);
     }
+  };
+
+  // ==========================================
+  // SELECT QUIZ ANSWER
+  // ==========================================
+
+  const handleSelectAnswer = (questionIndex: number, option: string) => {
+    if (quizSubmitted) return; // lock answers after submit
+
+    setQuizAnswers((prev) => ({
+      ...prev,
+      [questionIndex]: option,
+    }));
+  };
+
+  // ==========================================
+  // SUBMIT QUIZ
+  // ==========================================
+
+  const handleSubmitQuiz = async () => {
+    if (!quizData?.questions) return;
+
+    try {
+      setQuizSubmitLoading(true);
+      setError("");
+
+      let correct = 0;
+
+      quizData.questions.forEach((question: any, index: number) => {
+        const selected = quizAnswers[index];
+        if (selected && selected === question.correctAnswer) {
+          correct += 1;
+        }
+      });
+
+      const total = quizData.questions.length;
+      const incorrect = total - correct;
+
+      setQuizScore({ correct, total });
+      setQuizSubmitted(true);
+
+      const token = localStorage.getItem("token");
+      const materialId = sessionStorage.getItem("reviseAIMaterialId");
+
+      if (!token || !materialId) return;
+
+      const response = await fetch(
+        "http://localhost:5000/api/progress/quiz-attempt",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            materialId,
+            totalQuestions: total,
+            correctCount: correct,
+            incorrectCount: incorrect,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to save quiz attempt");
+      }
+    } catch (error: any) {
+      console.error("SUBMIT QUIZ ERROR:", error);
+      setError(error.message || "Failed to submit quiz");
+    } finally {
+      setQuizSubmitLoading(false);
+    }
+  };
+
+  // ==========================================
+  // RETAKE QUIZ
+  // ==========================================
+
+  const handleRetakeQuiz = () => {
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    setQuizScore(null);
   };
 
   // ==========================================
@@ -617,7 +816,10 @@ export default function DashboardPage() {
             {/* Progress */}
 
             <button
-              onClick={() => setActiveSection("progress")}
+              onClick={() => {
+                setActiveSection("progress");
+                fetchProgressStats();
+              }}
               className={getSidebarClass("progress")}
             >
               <span>Progress</span>
@@ -657,8 +859,8 @@ export default function DashboardPage() {
         <section className="h-screen flex-1 overflow-y-auto">
           {/* HEADER */}
 
-          <div className="border-b border-slate-800 px-8 py-8">
-            {/* ADDED: USERNAME BAR */}
+          <div className="border-b border-slate-800 px-4 py-5 sm:px-8 sm:py-8">
+            {/* USERNAME BAR */}
             <div className="mb-4 flex items-center gap-3 sm:mb-6">
               {/* Hamburger (mobile only) */}
               <button
@@ -703,8 +905,7 @@ export default function DashboardPage() {
 
             {activeSection === "dashboard" && (
               <>
-                {/* ADDED: personal greeting */}
-                <h2 className="text-3xl font-bold">
+                <h2 className="text-2xl font-bold sm:text-3xl">
                   {userName ? `Welcome back, ${userName}` : "Dashboard"}
                 </h2>
 
@@ -714,7 +915,7 @@ export default function DashboardPage() {
 
             {activeSection === "revision" && (
               <>
-                <h2 className="text-3xl font-bold">Revision</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">Revision</h2>
 
                 <p className="mt-2 text-slate-400">
                   Review your saved AI-generated summaries.
@@ -724,7 +925,7 @@ export default function DashboardPage() {
 
             {activeSection === "materials" && (
               <>
-                <h2 className="text-3xl font-bold">Materials</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">Materials</h2>
 
                 <p className="mt-2 text-slate-400">
                   Manage all your study materials.
@@ -734,7 +935,7 @@ export default function DashboardPage() {
 
             {activeSection === "progress" && (
               <>
-                <h2 className="text-3xl font-bold">Progress</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">Progress</h2>
 
                 <p className="mt-2 text-slate-400">
                   Track your learning progress.
@@ -744,7 +945,7 @@ export default function DashboardPage() {
 
             {activeSection === "settings" && (
               <>
-                <h2 className="text-3xl font-bold">Settings</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">Settings</h2>
 
                 <p className="mt-2 text-slate-400">
                   Manage your account settings.
@@ -754,7 +955,7 @@ export default function DashboardPage() {
 
             {activeSection === "summary" && (
               <>
-                <h2 className="text-3xl font-bold">AI Summary</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">AI Summary</h2>
 
                 <p className="mt-2 text-slate-400">
                   Your AI-generated study summary.
@@ -764,7 +965,7 @@ export default function DashboardPage() {
 
             {activeSection === "quiz" && (
               <>
-                <h2 className="text-3xl font-bold">AI Quiz</h2>
+                <h2 className="text-2xl font-bold sm:text-3xl">AI Quiz</h2>
 
                 <p className="mt-2 text-slate-400">
                   Test your knowledge from your study material.
@@ -777,7 +978,7 @@ export default function DashboardPage() {
               CONTENT
           ========================== */}
 
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
             {/* ERROR */}
 
             {error && (
@@ -1101,27 +1302,99 @@ export default function DashboardPage() {
 
             {activeSection === "progress" && (
               <div>
-                <div className="grid gap-5 md:grid-cols-3">
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-                    <p className="text-sm text-slate-400">Study Materials</p>
-
-                    <p className="mt-2 text-3xl font-bold">
-                      {materials.length}
-                    </p>
+                {progressLoading && (
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
+                    <p className="text-slate-400">Loading progress...</p>
                   </div>
+                )}
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-                    <p className="text-sm text-slate-400">Summaries</p>
+                {!progressLoading && progressStats && (
+                  <>
+                    {/* TOP STATS */}
+                    <div className="grid gap-5 md:grid-cols-3">
+                      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+                        <p className="text-sm text-slate-400">
+                          Study Materials
+                        </p>
+                        <p className="mt-2 text-3xl font-bold">
+                          {materials.length}
+                        </p>
+                      </div>
 
-                    <p className="mt-2 text-3xl font-bold">—</p>
-                  </div>
+                      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+                        <p className="text-sm text-slate-400">
+                          Summaries Saved
+                        </p>
+                        <p className="mt-2 text-3xl font-bold">
+                          {progressStats.summariesSaved}
+                        </p>
+                      </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-                    <p className="text-sm text-slate-400">Quizzes</p>
+                      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+                        <p className="text-sm text-slate-400">
+                          Quizzes Attempted
+                        </p>
+                        <p className="mt-2 text-3xl font-bold">
+                          {progressStats.quizzesAttempted}
+                        </p>
+                      </div>
+                    </div>
 
-                    <p className="mt-2 text-3xl font-bold">—</p>
-                  </div>
-                </div>
+                    {/* CIRCULAR CHART */}
+                    <div className="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6 sm:p-8">
+                      <h3 className="mb-6 text-xl font-bold">
+                        Overall Quiz Accuracy
+                      </h3>
+
+                      {progressStats.quizzesAttempted === 0 ? (
+                        <p className="text-slate-400">
+                          Attempt a quiz to see your accuracy here.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap justify-center gap-10">
+                          <CircularProgress
+                            percentage={progressStats.accuracy}
+                            label={`Correct (${progressStats.totalCorrect} questions)`}
+                            color="#22c55e"
+                          />
+                          <CircularProgress
+                            percentage={100 - progressStats.accuracy}
+                            label={`Incorrect (${progressStats.totalIncorrect} questions)`}
+                            color="#ef4444"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RECENT ATTEMPTS */}
+                    {progressStats.recentAttempts?.length > 0 && (
+                      <div className="mt-8">
+                        <h3 className="mb-4 text-xl font-bold">
+                          Recent Quiz Attempts
+                        </h3>
+
+                        <div className="space-y-3">
+                          {progressStats.recentAttempts.map((attempt: any) => (
+                            <div
+                              key={attempt._id}
+                              className="flex flex-col gap-1 rounded-lg border border-slate-800 bg-slate-900 p-4 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <p className="text-sm text-slate-400">
+                                {new Date(
+                                  attempt.createdAt,
+                                ).toLocaleDateString()}
+                              </p>
+                              <p className="font-semibold">
+                                {attempt.correctCount} /{" "}
+                                {attempt.totalQuestions} correct
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
@@ -1155,7 +1428,7 @@ export default function DashboardPage() {
                 </button>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h3 className="text-xl font-bold">Generated Summary</h3>
 
@@ -1195,35 +1468,112 @@ export default function DashboardPage() {
                   ← Back to Dashboard
                 </button>
 
-                <div className="space-y-5">
-                  {quizData.questions?.map((question: any, index: number) => (
-                    <div
-                      key={index}
-                      className="rounded-xl border border-slate-800 bg-slate-900 p-6"
-                    >
-                      <h3 className="text-lg font-semibold">
-                        {index + 1}. {question.question}
-                      </h3>
+                {/* SCORE BANNER (after submit) */}
+                {quizSubmitted && quizScore && (
+                  <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 p-6 text-center">
+                    <p className="text-sm text-slate-400">You scored</p>
+                    <p className="mt-1 text-4xl font-bold text-blue-400">
+                      {quizScore.correct} / {quizScore.total}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {Math.round((quizScore.correct / quizScore.total) * 100)}%
+                      correct
+                    </p>
 
-                      <div className="mt-5 space-y-3">
-                        {question.options?.map(
-                          (option: any, optionIndex: number) => (
-                            <div
-                              key={optionIndex}
-                              className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-slate-300"
-                            >
-                              {typeof option === "string"
-                                ? option
-                                : option.label ||
-                                  option.text ||
-                                  JSON.stringify(option)}
-                            </div>
-                          ),
+                    <button
+                      onClick={handleRetakeQuiz}
+                      className="mt-4 rounded-lg border border-slate-700 px-5 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+                    >
+                      Retake Quiz
+                    </button>
+                  </div>
+                )}
+
+                <div className="space-y-5">
+                  {quizData.questions?.map((question: any, index: number) => {
+                    const selected = quizAnswers[index];
+
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-xl border border-slate-800 bg-slate-900 p-6"
+                      >
+                        <h3 className="text-lg font-semibold">
+                          {index + 1}. {question.question}
+                        </h3>
+
+                        <div className="mt-5 space-y-3">
+                          {question.options?.map(
+                            (option: any, optionIndex: number) => {
+                              const optionText =
+                                typeof option === "string"
+                                  ? option
+                                  : option.label ||
+                                    option.text ||
+                                    JSON.stringify(option);
+
+                              const isSelected = selected === optionText;
+                              const isCorrectOption =
+                                optionText === question.correctAnswer;
+
+                              let optionClass =
+                                "w-full rounded-lg border px-4 py-3 text-left transition ";
+
+                              if (!quizSubmitted) {
+                                optionClass += isSelected
+                                  ? "border-blue-500 bg-blue-500/10 text-white"
+                                  : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600";
+                              } else {
+                                if (isCorrectOption) {
+                                  optionClass +=
+                                    "border-green-500 bg-green-500/10 text-green-400";
+                                } else if (isSelected && !isCorrectOption) {
+                                  optionClass +=
+                                    "border-red-500 bg-red-500/10 text-red-400";
+                                } else {
+                                  optionClass +=
+                                    "border-slate-700 bg-slate-800 text-slate-400";
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={optionIndex}
+                                  onClick={() =>
+                                    handleSelectAnswer(index, optionText)
+                                  }
+                                  disabled={quizSubmitted}
+                                  className={optionClass}
+                                >
+                                  {optionText}
+                                </button>
+                              );
+                            },
+                          )}
+                        </div>
+
+                        {quizSubmitted && question.explanation && (
+                          <p className="mt-4 rounded-lg border border-slate-700 bg-slate-950/50 p-3 text-sm text-slate-400">
+                            <span className="font-semibold text-slate-300">
+                              Explanation:{" "}
+                            </span>
+                            {question.explanation}
+                          </p>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+
+                {!quizSubmitted && (
+                  <button
+                    onClick={handleSubmitQuiz}
+                    disabled={quizSubmitLoading}
+                    className="mt-6 w-full rounded-lg bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {quizSubmitLoading ? "Submitting..." : "Submit Quiz"}
+                  </button>
+                )}
               </div>
             )}
           </div>

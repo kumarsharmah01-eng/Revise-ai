@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploads.routes.js";
 import materialRoutes from "./routes/material.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
+import progressRoutes from "./routes/progress.routes.js";
 
 dotenv.config();
 console.log("EMAIL_USER:", process.env.EMAIL_USER);
@@ -34,6 +35,8 @@ console.log(
 
 //ai routes
 app.use("/api/ai", aiRoutes);
+//progress
+app.use("/api/progress", progressRoutes);
 
 // Test route
 app.get("/", (req, res) => {
