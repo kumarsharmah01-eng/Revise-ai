@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/auth";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,53 +22,78 @@ export default function LoginPage() {
     setError("");
 
     try {
+      console.log("Login API:", `${API}/login`);
+
       const response = await fetch(`${API}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
+          email: email.trim(),
           password,
         }),
       });
 
       const data = await response.json();
 
-      // Email not verified: send the user to the OTP page
+      console.log("Login response:", data);
+
+      // ==========================================
+      // EMAIL NOT VERIFIED
+      // ==========================================
+
       if (response.status === 403 && data.code === "EMAIL_NOT_VERIFIED") {
-        const pendingEmail = data.email || email;
+        const pendingEmail = data.email || email.trim();
+
         sessionStorage.setItem("pendingEmail", pendingEmail);
 
-        // Send a fresh code. If it fails (e.g. cooldown), still continue;
-        // the verify page has its own resend button.
-        try {
-          await fetch(`${API}/resend-code`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: pendingEmail }),
-          });
-        } catch (resendError) {
-          console.error("Resend error:", resendError);
-        }
-
         router.push("/verify-email");
+
         return;
       }
+
+      // ==========================================
+      // LOGIN ERROR
+      // ==========================================
 
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
       }
 
-      // Save JWT token
+      // ==========================================
+      // CHECK TOKEN
+      // ==========================================
+
+      if (!data.token) {
+        throw new Error(
+          "Login successful, but authentication token was not received.",
+        );
+      }
+
+      // ==========================================
+      // SAVE TOKEN
+      // ==========================================
+
       localStorage.setItem("token", data.token);
 
-      // Go to dashboard
+      // ==========================================
+      // GO TO DASHBOARD
+      // ==========================================
+
       router.push("/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Login Error:", error);
 
-      setError(error.message || "Something went wrong. Please try again.");
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        setError(
+          "Unable to connect to the server. Please make sure the backend is running on http://localhost:5000.",
+        );
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -77,10 +102,14 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* ==========================================
+            LOGO / HEADER
+        ========================================== */}
+
         <div className="mb-8 text-center">
           <Link href="/" className="text-3xl font-bold">
-            Revise<span className="text-blue-500">AI</span>
+            Revise
+            <span className="text-blue-500">AI</span>
           </Link>
 
           <h1 className="mt-8 text-3xl font-bold">Welcome Back 👋</h1>
@@ -90,17 +119,28 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login Card */}
+        {/* ==========================================
+            LOGIN CARD
+        ========================================== */}
+
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
-          {/* Error */}
+          {/* ========================================
+              ERROR MESSAGE
+          ======================================== */}
+
           {error && (
             <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
+          {/* ========================================
+              LOGIN FORM
+          ======================================== */}
+
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email */}
+            {/* EMAIL */}
+
             <div>
               <label className="mb-2 block text-sm font-medium">Email</label>
 
@@ -110,11 +150,13 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 outline-none transition focus:border-blue-500"
               />
             </div>
 
-            {/* Password */}
+            {/* PASSWORD */}
+
             <div>
               <label className="mb-2 block text-sm font-medium">Password</label>
 
@@ -124,11 +166,13 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 outline-none transition focus:border-blue-500"
               />
             </div>
 
-            {/* Login Button */}
+            {/* LOGIN BUTTON */}
+
             <button
               type="submit"
               disabled={loading}
@@ -138,7 +182,10 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Signup */}
+          {/* ========================================
+              SIGNUP
+          ======================================== */}
+
           <p className="mt-6 text-center text-sm text-slate-400">
             Don't have an account?{" "}
             <Link
@@ -150,7 +197,10 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Back to Home */}
+        {/* ==========================================
+            BACK TO HOME
+        ========================================== */}
+
         <div className="mt-6 text-center">
           <Link
             href="/"

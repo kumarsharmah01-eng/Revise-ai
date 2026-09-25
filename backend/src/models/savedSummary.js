@@ -24,6 +24,6 @@ const summarySchema = new mongoose.Schema(
   },
 );
 
-const Summary = mongoose.model("Summary", summarySchema);
+const SavedSummary = mongoose.model("Summary", summarySchema);
 
-export default Summary;
+export default SavedSummary;

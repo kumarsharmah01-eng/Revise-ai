@@ -3,7 +3,9 @@ import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 
 import StudyMaterial from "../models/studyMaterial.js";
-import Summary from "../models/summary.js";
+
+import SavedSummary from "../models/savedSummary.js";
+
 import {
   generateSummary,
   extractTextFromImage,
@@ -14,6 +16,7 @@ const router = express.Router();
 
 // ==========================================
 // SUMMARY
+// POST /api/ai/summary
 // ==========================================
 
 router.post("/summary", authMiddleware, async (req, res) => {
@@ -22,7 +25,10 @@ router.post("/summary", authMiddleware, async (req, res) => {
 
     console.log("SUMMARY BODY:", req.body);
 
-    // Check materialId
+    // ==========================================
+    // CHECK MATERIAL ID
+    // ==========================================
+
     if (!materialId) {
       return res.status(400).json({
         success: false,
@@ -30,7 +36,10 @@ router.post("/summary", authMiddleware, async (req, res) => {
       });
     }
 
-    // Find material belonging to logged-in user
+    // ==========================================
+    // FIND MATERIAL
+    // ==========================================
+
     const material = await StudyMaterial.findOne({
       _id: materialId,
       userId: req.user.userId,
@@ -44,12 +53,13 @@ router.post("/summary", authMiddleware, async (req, res) => {
     }
 
     console.log("Generating summary for:", material.originalName);
+
     console.log("File type:", material.mimeType);
 
     let summary;
 
     // ==========================================
-    // PDF → Extracted Text → Gemini
+    // PDF → EXTRACTED TEXT → GEMINI
     // ==========================================
 
     if (material.mimeType === "application/pdf") {
@@ -64,20 +74,31 @@ router.post("/summary", authMiddleware, async (req, res) => {
     }
 
     // ==========================================
-    // JPG / PNG → Gemini Vision
+    // JPG / PNG → GEMINI VISION
     // ==========================================
     else if (
       material.mimeType === "image/jpeg" ||
       material.mimeType === "image/png"
     ) {
+      console.log("Image detected. Extracting text using Gemini Vision...");
+
       summary = await extractTextFromImage(
         material.filePath,
         material.mimeType,
       );
+
+      if (!summary || !summary.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Could not extract content from this image",
+        });
+      }
+
+      console.log("Image text extraction successful");
     }
 
     // ==========================================
-    // Unsupported file
+    // UNSUPPORTED FILE
     // ==========================================
     else {
       return res.status(400).json({
@@ -87,14 +108,10 @@ router.post("/summary", authMiddleware, async (req, res) => {
     }
 
     // ==========================================
-    // Final response
+    // SAVE SUMMARY TO MONGODB
     // ==========================================
 
-    // ==========================================
-    // Save summary to MongoDB
-    // ==========================================
-
-    const savedSummary = await Summary.create({
+    const savedSummary = await SavedSummary.create({
       userId: req.user.userId,
       materialId: material._id,
       content: summary,
@@ -103,7 +120,7 @@ router.post("/summary", authMiddleware, async (req, res) => {
     console.log("Summary saved successfully:", savedSummary._id);
 
     // ==========================================
-    // Final response
+    // FINAL RESPONSE
     // ==========================================
 
     return res.status(200).json({
@@ -122,11 +139,15 @@ router.post("/summary", authMiddleware, async (req, res) => {
     });
   }
 });
-//get summary history
+
+// ==========================================
+// GET SUMMARY HISTORY
+// GET /api/ai/summaries
+// ==========================================
 
 router.get("/summaries", authMiddleware, async (req, res) => {
   try {
-    const summaries = await Summary.find({
+    const summaries = await SavedSummary.find({
       userId: req.user.userId,
     })
       .populate("materialId", "originalName fileName mimeType")
@@ -134,7 +155,7 @@ router.get("/summaries", authMiddleware, async (req, res) => {
 
     console.log("FOUND SUMMARIES:", summaries);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: summaries.length,
       summaries,
@@ -142,16 +163,26 @@ router.get("/summaries", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("FETCH SUMMARIES ERROR:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch summaries",
+      error: error.message,
     });
   }
 });
-//save summary
+
+// ==========================================
+// SAVE SUMMARY
+// POST /api/ai/summaries
+// ==========================================
+
 router.post("/summaries", authMiddleware, async (req, res) => {
   try {
     const { materialId, content } = req.body;
+
+    // ==========================================
+    // VALIDATION
+    // ==========================================
 
     if (!materialId || !content) {
       return res.status(400).json({
@@ -160,7 +191,10 @@ router.post("/summaries", authMiddleware, async (req, res) => {
       });
     }
 
-    // Make sure material belongs to logged-in user
+    // ==========================================
+    // CHECK MATERIAL OWNERSHIP
+    // ==========================================
+
     const material = await StudyMaterial.findOne({
       _id: materialId,
       userId: req.user.userId,
@@ -173,7 +207,11 @@ router.post("/summaries", authMiddleware, async (req, res) => {
       });
     }
 
-    const savedSummary = await Summary.create({
+    // ==========================================
+    // SAVE SUMMARY
+    // ==========================================
+
+    const savedSummary = await SavedSummary.create({
       userId: req.user.userId,
       materialId: material._id,
       content,
@@ -194,12 +232,17 @@ router.post("/summaries", authMiddleware, async (req, res) => {
     });
   }
 });
-// delete summary
+
+// ==========================================
+// DELETE SUMMARY
+// DELETE /api/ai/summaries/:id
+// ==========================================
+
 router.delete("/summaries/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deletedSummary = await Summary.findOneAndDelete({
+    const deletedSummary = await SavedSummary.findOneAndDelete({
       _id: id,
       userId: req.user.userId,
     });
@@ -228,6 +271,7 @@ router.delete("/summaries/:id", authMiddleware, async (req, res) => {
 
 // ==========================================
 // QUIZ
+// POST /api/ai/quiz
 // ==========================================
 
 router.post("/quiz", authMiddleware, async (req, res) => {
@@ -236,7 +280,10 @@ router.post("/quiz", authMiddleware, async (req, res) => {
 
     console.log("QUIZ BODY:", req.body);
 
-    // Check materialId
+    // ==========================================
+    // CHECK MATERIAL ID
+    // ==========================================
+
     if (!materialId) {
       return res.status(400).json({
         success: false,
@@ -244,7 +291,10 @@ router.post("/quiz", authMiddleware, async (req, res) => {
       });
     }
 
-    // Find material belonging to logged-in user
+    // ==========================================
+    // FIND MATERIAL
+    // ==========================================
+
     const material = await StudyMaterial.findOne({
       _id: materialId,
       userId: req.user.userId,
@@ -258,12 +308,13 @@ router.post("/quiz", authMiddleware, async (req, res) => {
     }
 
     console.log("Generating quiz for:", material.originalName);
+
     console.log("File type:", material.mimeType);
 
     let studyText = material.extractedText;
 
     // ==========================================
-    // IMAGE → Gemini Vision → Extract Text
+    // IMAGE → GEMINI VISION → EXTRACT TEXT
     // ==========================================
 
     if (
@@ -288,7 +339,7 @@ router.post("/quiz", authMiddleware, async (req, res) => {
     }
 
     // ==========================================
-    // PDF → Existing Extracted Text
+    // PDF → EXISTING EXTRACTED TEXT
     // ==========================================
     else if (material.mimeType === "application/pdf") {
       if (!studyText || !studyText.trim()) {
@@ -311,7 +362,7 @@ router.post("/quiz", authMiddleware, async (req, res) => {
     }
 
     // ==========================================
-    // Unsupported file
+    // UNSUPPORTED FILE
     // ==========================================
     else {
       return res.status(400).json({
@@ -321,7 +372,7 @@ router.post("/quiz", authMiddleware, async (req, res) => {
     }
 
     // ==========================================
-    // Generate Quiz
+    // GENERATE QUIZ
     // ==========================================
 
     console.log("Sending study material to Gemini for quiz...");
@@ -331,7 +382,7 @@ router.post("/quiz", authMiddleware, async (req, res) => {
     console.log("Quiz generated successfully");
 
     // ==========================================
-    // Final response
+    // FINAL RESPONSE
     // ==========================================
 
     return res.status(200).json({

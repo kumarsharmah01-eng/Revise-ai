@@ -22,7 +22,10 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Validate input
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
+
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -30,7 +33,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Validate password
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -38,20 +40,20 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Normalize email
     const normalizedEmail = email.toLowerCase().trim();
+    const normalizedName = name.trim();
 
-    // ====================================================
+    // -----------------------------
     // CHECK EXISTING USER
-    // ====================================================
+    // -----------------------------
 
     let user = await User.findOne({
       email: normalizedEmail,
     });
 
-    // ====================================================
-    // USER ALREADY EXISTS
-    // ====================================================
+    // -----------------------------
+    // EXISTING USER
+    // -----------------------------
 
     if (user) {
       // Already verified
@@ -62,11 +64,7 @@ router.post("/register", async (req, res) => {
         });
       }
 
-      // ====================================================
-      // EXISTING BUT NOT VERIFIED
-      // Generate new OTP
-      // ====================================================
-
+      // Existing but not verified
       const verificationCode = generateOTP();
       const verificationCodeExpires = getOTPExpiry();
 
@@ -75,8 +73,17 @@ router.post("/register", async (req, res) => {
 
       await user.save();
 
-      // Send new verification email
-      await sendVerificationEmail(user.email, user.name, verificationCode);
+      try {
+        await sendVerificationEmail(user.email, user.name, verificationCode);
+      } catch (emailError) {
+        console.error("VERIFICATION EMAIL ERROR:", emailError);
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Account exists but verification email could not be sent. Check email configuration.",
+        });
+      }
 
       return res.status(200).json({
         success: true,
@@ -85,25 +92,25 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // ====================================================
+    // -----------------------------
     // HASH PASSWORD
-    // ====================================================
+    // -----------------------------
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ====================================================
+    // -----------------------------
     // GENERATE OTP
-    // ====================================================
+    // -----------------------------
 
     const verificationCode = generateOTP();
     const verificationCodeExpires = getOTPExpiry();
 
-    // ====================================================
+    // -----------------------------
     // CREATE USER
-    // ====================================================
+    // -----------------------------
 
     user = await User.create({
-      name: name.trim(),
+      name: normalizedName,
       email: normalizedEmail,
       password: hashedPassword,
 
@@ -113,15 +120,26 @@ router.post("/register", async (req, res) => {
       verificationCodeExpires,
     });
 
-    // ====================================================
+    // -----------------------------
     // SEND VERIFICATION EMAIL
-    // ====================================================
+    // -----------------------------
 
-    await sendVerificationEmail(user.email, user.name, verificationCode);
+    try {
+      await sendVerificationEmail(user.email, user.name, verificationCode);
+    } catch (emailError) {
+      console.error("VERIFICATION EMAIL ERROR:", emailError);
 
-    // ====================================================
-    // RESPONSE
-    // ====================================================
+      return res.status(500).json({
+        success: false,
+        message:
+          "Account created, but verification email could not be sent. Please try resending the code.",
+        email: user.email,
+      });
+    }
+
+    // -----------------------------
+    // SUCCESS
+    // -----------------------------
 
     return res.status(201).json({
       success: true,
@@ -147,7 +165,10 @@ router.post("/verify-email", async (req, res) => {
   try {
     const { email, code } = req.body;
 
-    // Validate input
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
+
     if (!email || !code) {
       return res.status(400).json({
         success: false,
@@ -156,11 +177,11 @@ router.post("/verify-email", async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const normalizedCode = code.trim();
+    const normalizedCode = String(code).trim();
 
-    // ====================================================
+    // -----------------------------
     // FIND USER
-    // ====================================================
+    // -----------------------------
 
     const user = await User.findOne({
       email: normalizedEmail,
@@ -173,9 +194,9 @@ router.post("/verify-email", async (req, res) => {
       });
     }
 
-    // ====================================================
-    // CHECK ALREADY VERIFIED
-    // ====================================================
+    // -----------------------------
+    // ALREADY VERIFIED
+    // -----------------------------
 
     if (user.emailVerified) {
       return res.status(400).json({
@@ -184,31 +205,34 @@ router.post("/verify-email", async (req, res) => {
       });
     }
 
-    // ====================================================
+    // -----------------------------
     // CHECK CODE EXISTS
-    // ====================================================
+    // -----------------------------
 
     if (!user.verificationCode) {
       return res.status(400).json({
         success: false,
-        message: "No verification code found",
+        message: "No verification code found. Please request a new code.",
       });
     }
 
-    // ====================================================
-    // CHECK CODE EXPIRATION
-    // ====================================================
+    // -----------------------------
+    // CHECK EXPIRY
+    // -----------------------------
 
-    if (isOTPExpired(user.verificationCodeExpires)) {
+    if (
+      !user.verificationCodeExpires ||
+      isOTPExpired(user.verificationCodeExpires)
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Verification code has expired",
+        message: "Verification code has expired. Please request a new code.",
       });
     }
 
-    // ====================================================
-    // CHECK CODE
-    // ====================================================
+    // -----------------------------
+    // CHECK OTP
+    // -----------------------------
 
     if (user.verificationCode !== normalizedCode) {
       return res.status(400).json({
@@ -217,20 +241,19 @@ router.post("/verify-email", async (req, res) => {
       });
     }
 
-    // ====================================================
+    // -----------------------------
     // VERIFY USER
-    // ====================================================
+    // -----------------------------
 
     user.emailVerified = true;
-
     user.verificationCode = null;
     user.verificationCodeExpires = null;
 
     await user.save();
 
-    // ====================================================
+    // -----------------------------
     // SUCCESS
-    // ====================================================
+    // -----------------------------
 
     return res.status(200).json({
       success: true,
@@ -242,6 +265,101 @@ router.post("/verify-email", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error during email verification",
+    });
+  }
+});
+
+// ====================================================
+// RESEND VERIFICATION CODE
+// POST /api/auth/resend-code
+// ====================================================
+
+router.post("/resend-code", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // -----------------------------
+    // FIND USER
+    // -----------------------------
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // -----------------------------
+    // ALREADY VERIFIED
+    // -----------------------------
+
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already verified",
+      });
+    }
+
+    // -----------------------------
+    // GENERATE NEW OTP
+    // -----------------------------
+
+    const verificationCode = generateOTP();
+    const verificationCodeExpires = getOTPExpiry();
+
+    user.verificationCode = verificationCode;
+    user.verificationCodeExpires = verificationCodeExpires;
+
+    await user.save();
+
+    // -----------------------------
+    // SEND EMAIL
+    // -----------------------------
+
+    try {
+      await sendVerificationEmail(user.email, user.name, verificationCode);
+    } catch (emailError) {
+      console.error("RESEND EMAIL ERROR:", emailError);
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to send verification email. Please check email configuration.",
+      });
+    }
+
+    // -----------------------------
+    // SUCCESS
+    // -----------------------------
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification code sent successfully",
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("RESEND CODE ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error while resending verification code",
     });
   }
 });
