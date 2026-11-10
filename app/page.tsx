@@ -88,7 +88,7 @@ export default function Home() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <div className="p-8 rounded-2xl border border-gray-800 bg-gray-950 hover:border-gray-600 transition">
-            <div className="text-3xl mb-5">📚</div>
+            <div className="text-3xl mb-5"></div>
 
             <h3 className="text-xl font-semibold mb-3">Smart Revision</h3>
 
@@ -99,7 +99,7 @@ export default function Home() {
           </div>
 
           <div className="p-8 rounded-2xl border border-gray-800 bg-gray-950 hover:border-gray-600 transition">
-            <div className="text-3xl mb-5">🧠</div>
+            <div className="text-3xl mb-5"></div>
 
             <h3 className="text-xl font-semibold mb-3">AI Quiz Generator</h3>
 
@@ -110,7 +110,7 @@ export default function Home() {
           </div>
 
           <div className="p-8 rounded-2xl border border-gray-800 bg-gray-950 hover:border-gray-600 transition">
-            <div className="text-3xl mb-5">🎤</div>
+            <div className="text-3xl mb-5"></div>
 
             <h3 className="text-xl font-semibold mb-3">
               Interview Preparation
