@@ -10,7 +10,7 @@ import { sendVerificationEmail } from "../utils/sendEmail.js";
 import { loginUser, getCurrentUser } from "../controllers/authController.js";
 
 import authMiddleware from "../middleware/authMiddleware.js";
-
+import { verifyOTP } from "../controllers/verifyOTPController.js";
 const router = express.Router();
 
 // ====================================================
@@ -363,6 +363,12 @@ router.post("/resend-code", async (req, res) => {
     });
   }
 });
+// ====================================================
+// VERIFY OTP
+// POST /api/auth/verify-otp
+// ====================================================
+
+router.post("/verify-otp", verifyOTP);
 
 // ====================================================
 // LOGIN
